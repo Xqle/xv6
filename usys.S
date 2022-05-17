@@ -19,6 +19,9 @@ SYSCALL(sh_var_write)
 SYSCALL(chpri)
 SYSCALL(getcpuid)
 
+SYSCALL(salloc)
+SYSCALL(sfree)
+
 SYSCALL(fork)
 SYSCALL(exit)
 SYSCALL(wait)

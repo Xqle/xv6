@@ -122,6 +122,8 @@ void            wakeup1p(void*);
 void            yield(void);
 int             getcpuid(void);
 int             chpri(int, int);
+void*           salloc(int);
+int             sfree(void*);
 
 // swtch.S
 void            swtch(struct context**, struct context*);
@@ -183,6 +185,8 @@ void            switchkvm(void);
 int             copyout(pde_t*, uint, void*, uint);
 void            clearpteu(pde_t *pgdir, char *uva);
 void            initslab(void);
+void*           slab_alloc(pde_t*, void*, uint);
+int             slab_free(pde_t*, void*);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

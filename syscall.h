@@ -28,5 +28,10 @@
 #define SYS_sem_free        27
 #define SYS_sem_p           28
 #define SYS_sem_v           29
+#define SYS_salloc          30
+#define SYS_sfree           31
+
+
+
 
 

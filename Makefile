@@ -179,6 +179,7 @@ UPROGS=\
 	_setpriority\
 	_sh_rw_nolock\
 	_sh_rw_lock\
+	_slabtest\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)

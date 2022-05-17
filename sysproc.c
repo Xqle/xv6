@@ -125,7 +125,7 @@ sys_sh_var_read(void)
 // write the argument (if not negetive) to the share variable
 // return share variable
 int
-sys_sh_var_write()
+sys_sh_var_write(void)
 {
     int n;
     if(argint(0, &n) < 0) 
@@ -133,6 +133,27 @@ sys_sh_var_write()
     sh_var_for_sem_demo = n;
     return sh_var_for_sem_demo;
 }
+
+
+
+// allocate slab
+int sys_salloc(void)
+{
+    int sz;
+    if(argint(0, &sz) < 0) return -1;
+    return (int)salloc(sz);
+}
+
+
+// free slab
+int sys_sfree(void)
+{
+    int va;
+    if(argint(0, &va) < 0) return -1;
+    return sfree((void*)va);
+}
+
+
 
 
 

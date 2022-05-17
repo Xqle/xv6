@@ -72,8 +72,8 @@ mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)
   char *a, *last;
   pte_t *pte;
 
-  a = (char*)PGROUNDDOWN((uint)va);
-  last = (char*)PGROUNDDOWN(((uint)va) + size - 1);
+  a = (char*)PGROUNDDOWN((uint)va);     // round to the lower multiple of PGSIZE
+  last = (char*)PGROUNDDOWN(((uint)va) + size - 1);     // round to the higher multiple of PGSIZE
   for(;;){
     if((pte = walkpgdir(pgdir, a, 1)) == 0)
       return -1;
@@ -390,4 +390,105 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
 // Blank page.
 //PAGEBREAK!
 // Blank page.
+
+
+
+// slab
+// 1 page per slab
+struct slab
+{
+    int sz;             // size of one object
+    int num_objects;    // number of objects
+    char used[255];     // used[i] = 1 (or 0) -- object i is used (or not used)
+    void* pa;           // physical address
+    char is_mapped;     // is_mapped = 1 (or 0) -- pa is (or is not) mapped
+};
+
+#define SLABNUM 8
+struct slab slabs[SLABNUM];
+
+// initialize slab
+// allocate 1 page for each slab
+void initslab()
+{
+    for(int i = 0, sz = 16; sz <= 2048; i ++, sz <<= 1)
+    {
+        slabs[i].pa = (void*)V2P(kalloc());    // allocate physical address
+        slabs[i].sz = sz;
+        slabs[i].num_objects = PGSIZE / sz;
+        memset(slabs[i].used, 0, sizeof(slabs[i].used));    // clear used array
+        slabs[i].is_mapped = 0;
+        // print information of slab[i]
+        cprintf("slab %d (object size: %d | object nums: %d) is allocated! PA: %p\n", i, 
+                slabs[i].sz, slabs[i].num_objects, slabs[i].pa);
+    }
+}
+
+// allocate slab for process
+void* slab_alloc(pde_t* pgdir, void* va, uint sz)
+{
+    // locate first suitable slab
+    int i = 0, t = 16;
+    while(t < sz) t *= 2, i ++;
+
+    // locate first unused object
+    int j;
+    for(j = 0; j < slabs[i].num_objects; j ++)
+        if(!slabs[i].used[j])
+            break;
+    if(j == slabs[i].num_objects) return 0;  // All objects are used
+    
+    slabs[i].used[j] = 1;   // this object is now used
+    // if never be mapped before
+    if(!slabs[i].is_mapped)
+    {
+        mappages(pgdir, va, 4096, (uint)slabs[i].pa, PTE_W | PTE_U);
+        slabs[i].is_mapped = 1;
+    }
+
+    // calculate va & pa
+    va += j * slabs[i].sz;
+    uint pa = (uint)slabs[i].pa + j * slabs[i].sz;
+
+    // print related information
+    cprintf("Allocate sucessfully!(slab index: %d | object index: %d | PA: %p | VA: %p)\n", i, j, pa, va);
+
+    return va;
+}
+
+// free slab
+int slab_free(pde_t* pgdir, void* va)
+{
+    // locate pa via va
+    uint page_addr = (uint)uva2ka(pgdir, va);
+    uint offset = (uint)va & (PGSIZE - 1);
+    uint pa = (uint)V2P(page_addr + offset);
+    cprintf("free PA: %p (VA: %p)\n", pa, va);
+    
+    // locate slab by pa
+    int i = 0;
+    for(i = 0; i < 8; i ++)
+        if((uint)slabs[i].pa <= pa && pa < (uint)slabs[i].pa + PGSIZE)
+            break;
+    if(i == 8) return 0;    // no slab is corresponding to va
+
+    // locate object by offset
+    int j = offset / slabs[i].sz;
+    slabs[i].used[j] = 0;
+    cprintf("Object %d in slab %d is now available\n", j, i);
+
+    // at least 1 object is used
+    for(int k = 0; k < slabs[i].num_objects; k ++ )
+        if(slabs[i].used[k] == 1)
+            return 1;
+    
+    // no object is used, undo mapping
+    pte_t* pte = walkpgdir(pgdir, va, 0);
+    *pte = (uint)0;
+    slabs[i].is_mapped = 0;     // slab is no longer mapped
+    
+    cprintf("No object is used in slab %d, undo mapping (VA: %p)\n", i, va);
+    return 1;
+}
+
 

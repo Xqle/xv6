@@ -10,6 +10,8 @@ int sem_create(int);
 int sem_free(int);
 int sem_p(int);
 int sem_v(int);
+void* salloc(int);
+int sfree(void*);
 
 int fork(void);
 int exit(void) __attribute__((noreturn));

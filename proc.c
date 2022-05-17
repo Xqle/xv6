@@ -529,5 +529,19 @@ chpri(int pid, int priority)
 }
 
 
+// allocate slab
+void*
+salloc(int sz)
+{
+    pde_t *pgdir = proc->pgdir;
+    void* va = (void*)proc->sz;
+    return slab_alloc(pgdir, va, (uint)sz);
+}
 
 
+// free slab
+int sfree(void* va)
+{
+    pde_t *pgdir = proc->pgdir;
+    return slab_free(pgdir, va);
+}
