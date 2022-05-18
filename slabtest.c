@@ -7,7 +7,7 @@ int main(int argc, char* argv[])
     // s1o0 should be allocated to it
     char* str1 = salloc(20);
     str1[0] = '1';
-    printf(1, "VM of str1: %p | content: %c\n\n", str1, str1[0]);
+    printf(1, "VM of str1: %p | content: %c\n\n", str1, str1[0]); 
     
     // s1o1 should be allocated to it
     char* str2 = salloc(21);
@@ -23,16 +23,18 @@ int main(int argc, char* argv[])
     str3[0] = '3';
     printf(1, "VM of str3: %p | content: %c\n\n", str3, str3[0]);
    
-    sfree(str2);    // free s1o1
-    printf(1, "\n");
+    sfree(str2), printf(1, "\n");    // free s1o1
+    sfree(str3), printf(1, "\n");    // free s1o0 & undo mapping
    
-    sfree(str3);    // free s1o0 & undo mapping
-    printf(1, "\n");
-
     // s1o0 should be allocated to it
     char* str4 = salloc(22);
     str4[0] = '4';
-    printf(1, "VM of str4 %p | content: %c\n\n", str4, str4[0]);
+    printf(1, "VM of str4: %p | content: %c\n\n", str4, str4[0]);
+    
+    // s2o0 should be allocated to it
+    char* str5 = salloc(55);
+    str5[0] = '5';
+    printf(1, "VM of str5: %p | content: %c\n\n", str5, str5[0]);
 
     exit();  // there will be error if use "return 0;"
 }

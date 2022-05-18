@@ -399,7 +399,7 @@ struct slab
 {
     int sz;             // size of one object
     int num_objects;    // number of objects
-    char used[255];     // used[i] = 1 (or 0) -- object i is used (or not used)
+    char used[256];     // used[i] = 1 (or 0) -- object i is used (or not used)
     void* pa;           // physical address
     char is_mapped;     // is_mapped = 1 (or 0) -- pa is (or is not) mapped
 };
@@ -427,17 +427,20 @@ void initslab()
 // allocate slab for process
 void* slab_alloc(pde_t* pgdir, void* va, uint sz)
 {
-    // locate first suitable slab
-    int i = 0, t = 16;
-    while(t < sz) t *= 2, i ++;
+    // locate first suitable and unused object
+    // every time i plus 1, va should plus PGSIZE
+    int i, j = 0, t;
+    for(i = 0, t = 16; i < 8; i ++, t <<= 1, va += PGSIZE)
+    {
+        if(t < sz) continue;    // size of object of slabs[i] is not big enough
+        for(j = 0; j < slabs[i].num_objects; j ++)
+            if(!slabs[i].used[j])
+                break;
+        if(j != slabs[i].num_objects) break;    // All objects in slabs[i] are used
+    }
 
-    // locate first unused object
-    int j;
-    for(j = 0; j < slabs[i].num_objects; j ++)
-        if(!slabs[i].used[j])
-            break;
     if(j == slabs[i].num_objects) return 0;  // All objects are used
-    
+
     slabs[i].used[j] = 1;   // this object is now used
     // if never be mapped before
     if(!slabs[i].is_mapped)
