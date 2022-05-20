@@ -20,7 +20,25 @@ struct {
   struct spinlock lock;
   int use_lock;
   struct run *freelist;
+  uint pgref[PHYSTOP / PGSIZE]; // reference counter
 } kmem;
+
+// get ref count of pa
+uint pgref_get(uint pa)
+{
+    acquire(&kmem.lock);
+    uint res = kmem.pgref[pa / PGSIZE];
+    release(&kmem.lock);
+    return res;
+}
+
+// ref count of pa plus t
+void pgref_add(uint pa, uint t)
+{
+    acquire(&kmem.lock);
+    kmem.pgref[pa / PGSIZE] += t;
+    release(&kmem.lock);
+}
 
 // Initialization happens in two phases.
 // 1. main() calls kinit1() while still using entrypgdir to place just
@@ -64,14 +82,20 @@ kfree(char *v)
   if((uint)v % PGSIZE || v < end || V2P(v) >= PHYSTOP)
     panic("kfree");
 
-  // Fill with junk to catch dangling refs.
-  memset(v, 1, PGSIZE);
-
   if(kmem.use_lock)
-    acquire(&kmem.lock);
-  r = (struct run*)v;
-  r->next = kmem.freelist;
-  kmem.freelist = r;
+   acquire(&kmem.lock);
+  // if ref count > 0, ref count decrease 1
+  if(kmem.pgref[V2P(v) / PGSIZE] > 0)
+      kmem.pgref[V2P(v) / PGSIZE] --;
+  // if ref count == 0, free the page
+  if(kmem.pgref[V2P(v) / PGSIZE] == 0)
+  {
+    // Fill with junk to catch dangling refs.
+    memset(v, 1, PGSIZE);
+    r = (struct run*)v;
+    r->next = kmem.freelist;
+    kmem.freelist = r;
+  }
   if(kmem.use_lock)
     release(&kmem.lock);
 }
@@ -88,7 +112,10 @@ kalloc(void)
     acquire(&kmem.lock);
   r = kmem.freelist;
   if(r)
+  {
     kmem.freelist = r->next;
+    kmem.pgref[V2P((char*)r) / PGSIZE] = 1; // ref of new pg should be 1
+  }
   if(kmem.use_lock)
     release(&kmem.lock);
   return (char*)r;

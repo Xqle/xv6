@@ -12,6 +12,7 @@ int sem_p(int);
 int sem_v(int);
 void* salloc(int);
 int sfree(void*);
+int cow_fork(void);
 
 int fork(void);
 int exit(void) __attribute__((noreturn));

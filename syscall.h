@@ -30,7 +30,7 @@
 #define SYS_sem_v           29
 #define SYS_salloc          30
 #define SYS_sfree           31
-
+#define SYS_cow_fork        32
 
 
 

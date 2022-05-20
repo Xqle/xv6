@@ -77,7 +77,10 @@ trap(struct trapframe *tf)
             cpunum(), tf->cs, tf->eip);
     lapiceoi();
     break;
-
+  case T_PGFLT:
+    cprintf("cow fault! pid: %d | ", proc->pid);
+    cow_fault(proc->pgdir, (char*)rcr2());
+    break;
   //PAGEBREAK: 13
   default:
     if(proc == 0 || (tf->cs&3) == 0){

@@ -108,6 +108,8 @@ extern int sys_sem_p(void);
 extern int sys_sem_v(void);
 extern int sys_salloc(void);
 extern int sys_sfree(void);
+extern int sys_cow_fork(void);
+
 
 static int (*syscalls[])(void) = {
 [SYS_fork]              sys_fork,
@@ -141,6 +143,7 @@ static int (*syscalls[])(void) = {
 [SYS_sem_v]             sys_sem_v,
 [SYS_salloc]            sys_salloc,
 [SYS_sfree]             sys_sfree,
+[SYS_cow_fork]          sys_cow_fork,
 };
 
 void

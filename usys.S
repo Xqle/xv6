@@ -22,6 +22,8 @@ SYSCALL(getcpuid)
 SYSCALL(salloc)
 SYSCALL(sfree)
 
+SYSCALL(cow_fork)
+
 SYSCALL(fork)
 SYSCALL(exit)
 SYSCALL(wait)

@@ -154,6 +154,9 @@ int sys_sfree(void)
 }
 
 
-
+int sys_cow_fork(void)
+{
+    return cow_fork();
+}
 
 

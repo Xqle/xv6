@@ -545,3 +545,47 @@ int sfree(void* va)
     pde_t *pgdir = proc->pgdir;
     return slab_free(pgdir, va);
 }
+
+
+// Create a new process copying p as the parent.
+// Sets up stack to return as if from system call.
+// Caller must set state of returned proc to RUNNABLE.
+int
+cow_fork(void)
+{
+  int i, pid;
+  struct proc *np;
+
+  acquire(&ptable.lock);
+
+  // Allocate process.
+  if((np = allocproc()) == 0){
+    release(&ptable.lock);
+    return -1;
+  }
+
+  // Copy process state from p.
+  np->pgdir = cow_copyuvm(proc->pgdir, proc->sz);
+  np->sz = proc->sz;
+  np->parent = proc;
+  *np->tf = *proc->tf;
+
+  // Clear %eax so that fork returns 0 in the child.
+  np->tf->eax = 0;
+
+  for(i = 0; i < NOFILE; i++)
+    if(proc->ofile[i])
+      np->ofile[i] = filedup(proc->ofile[i]);
+  np->cwd = idup(proc->cwd);
+
+  safestrcpy(np->name, proc->name, sizeof(proc->name));
+
+  pid = np->pid;
+
+  np->state = RUNNABLE;
+
+  release(&ptable.lock);
+
+  return pid;
+}
+

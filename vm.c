@@ -78,7 +78,7 @@ mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)
     if((pte = walkpgdir(pgdir, a, 1)) == 0)
       return -1;
     if(*pte & PTE_P)
-      panic("remap");
+        panic("remap");
     *pte = pa | perm | PTE_P;
     if(a == last)
       break;
@@ -492,6 +492,75 @@ int slab_free(pde_t* pgdir, void* va)
     
     cprintf("No object is used in slab %d, undo mapping (VA: %p)\n", i, va);
     return 1;
+}
+
+
+// Given a parent process's page table, create a copy
+// of it for a child.
+pde_t*
+cow_copyuvm(pde_t *pgdir, uint sz)
+{
+  pde_t *d;
+  pte_t *pte;
+  uint pa, i, flags;
+  char *mem;
+
+  if((d = setupkvm()) == 0)
+    return 0;
+
+  for(i = 0; i < sz; i += PGSIZE){
+    if((pte = walkpgdir(pgdir, (void *) i, 0)) == 0)
+      panic("copyuvm: pte should exist");
+    if(!(*pte & PTE_P))
+      panic("copyuvm: page not present");
+    pa = PTE_ADDR(*pte);
+    if(i >= 3 * PGSIZE) *pte &= ~PTE_W;
+    flags = PTE_FLAGS(*pte);
+    
+    if(i < 3 * PGSIZE)
+    {
+        if((mem = kalloc()) == 0)
+            goto bad;
+        memmove(mem, (char*)P2V(pa), PGSIZE);
+        if(mappages(d, (void*)i, PGSIZE, V2P(mem), flags) < 0)
+            goto bad;
+        cprintf("copy %p to %p\n", pa, V2P(mem));
+    }
+    else
+    {
+        // map va of child process to pa of parent process
+        mappages(d, (void*)i, PGSIZE, pa, flags);
+        cprintf("lazy %p\n", pa);
+        pgref_add(pa, 1);
+    }
+  }
+  return d;
+
+bad:
+  freevm(d);
+  return 0;
+}
+
+
+void cow_fault(pde_t* pgdir, void* va)
+{
+    pte_t* pte = walkpgdir(pgdir, va, 0);
+    uint pa = PTE_ADDR(*pte);
+    uint ref = pgref_get(pa);
+    uint flags = PTE_FLAGS(*pte);
+    if(ref > 1)
+    {
+        pgref_add(pa, -1);
+        char* mem = kalloc();
+        memmove(mem, (char*)P2V(pa), PGSIZE);
+        *pte = V2P(mem) | flags | PTE_W;    // map va to new physical page
+        cprintf("ref: %d, copy %p to %p\n", ref, pa, V2P(mem));
+    }
+    else
+    {
+        *pte |= PTE_W;
+        cprintf("ref = 1, the page %p is writable now!\n", pa);
+    }
 }
 
 
